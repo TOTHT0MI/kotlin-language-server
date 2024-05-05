@@ -161,6 +161,15 @@ class FillEmptyBodyTest : SingleFileTestFixture("completions", "FillEmptyBody.kt
     }
 }
 
+class AnnotationTest : SingleFileTestFixture("completions", "AnnotationTest.kt") {
+    @Test fun `complete an annotation`() {
+        val completions = languageServer.textDocumentService.completion(completionParams(file, 1, 5)).get().right!!
+        val labels = completions.items.map { it.label }
+
+        assertThat(labels, hasItem("OptIn"))
+    }
+}
+
 class ConstructorTest : SingleFileTestFixture("completions", "Constructor.kt") {
     @Test fun `complete a constructor`() {
         val completions = languageServer.textDocumentService.completion(completionParams(file, 2, 10)).get().right!!

@@ -66,14 +66,14 @@ fun completions(file: CompiledFile, cursor: Int, index: SymbolIndex, config: Com
     val elementItemLabels = elementItemList.mapNotNull { it.label }.toSet()
 
     val isExhaustive = element !is KtNameReferenceExpression
-                    && element !is KtTypeElement
-                    && element !is KtQualifiedExpression
+        && element !is KtTypeElement
+        && element !is KtQualifiedExpression
 
     val items = (
         elementItemList.asSequence()
-        + (if (!isExhaustive) indexCompletionItems(file, cursor, element, index, partial).filter { it.label !in elementItemLabels } else emptySequence())
-        + (if (elementItemList.isEmpty()) keywordCompletionItems(partial) else emptySequence())
-    )
+            + (if (!isExhaustive) indexCompletionItems(file, cursor, element, index, partial).filter { it.label !in elementItemLabels } else emptySequence())
+            + (if (elementItemList.isEmpty()) keywordCompletionItems(partial) else emptySequence())
+        )
     val itemList = items
         .take(MAX_COMPLETION_ITEMS)
         .toList()
@@ -123,9 +123,9 @@ private fun indexCompletionItems(file: CompiledFile, cursor: Int, element: KtEle
         .filter { it.fqName.shortName() !in importedNames && it.fqName.parent() !in wildcardPackages }
         .filter {
             // TODO: Visibility checker should be less liberal
-               it.visibility == Symbol.Visibility.PUBLIC
-            || it.visibility == Symbol.Visibility.PROTECTED
-            || it.visibility == Symbol.Visibility.INTERNAL
+            it.visibility == Symbol.Visibility.PUBLIC
+                || it.visibility == Symbol.Visibility.PROTECTED
+                || it.visibility == Symbol.Visibility.INTERNAL
         }
         .map { CompletionItem().apply {
             label = it.fqName.shortName().toString()
@@ -222,18 +222,18 @@ private fun extractPropertyName(d: DeclarationDescriptor): String {
 }
 
 private fun isGetter(d: DeclarationDescriptor): Boolean =
-        d is CallableDescriptor &&
+    d is CallableDescriptor &&
         !d.name.isSpecial &&
         d.name.identifier.matches(Regex("(get|is)[A-Z]\\w+")) &&
         d.valueParameters.isEmpty()
 
 private fun isSetter(d: DeclarationDescriptor): Boolean =
-        d is CallableDescriptor &&
+    d is CallableDescriptor &&
         !d.name.isSpecial &&
         d.name.identifier.matches(Regex("set[A-Z]\\w+")) &&
         d.valueParameters.size == 1
 
-private fun isGlobalCall(el: KtElement) = el is KtBlockExpression || el is KtClassBody || el.parent is KtBinaryExpression
+private fun isGlobalCall(el: KtElement) = el is KtBlockExpression || el is KtClassBody || el.parent is KtBinaryExpression || el is KtNameReferenceExpression // for some reason annotations are parsed as this
 
 private fun asGlobalCompletable(file: CompiledFile, cursor: Int, el: KtElement): KtElement? {
     val psi =  file.parse.findElementAt(cursor) ?: return null
@@ -249,8 +249,10 @@ private fun asGlobalCompletable(file: CompiledFile, cursor: Int, el: KtElement):
 
 private fun KtElement.asKtClass(): KtElement? {
     return this.findParent<KtImportDirective>() // import x.y.?
-        // package x.y.?
+    // package x.y.?
         ?: this.findParent<KtPackageDirective>()
+        // ?
+        ?: this as? KtNameReferenceExpression
         // :?
         ?: this as? KtUserType
         ?: this.parent as? KtTypeElement
@@ -262,8 +264,6 @@ private fun KtElement.asKtClass(): KtElement? {
         ?: this.parent as? KtCallableReferenceExpression
         // something.foo() with cursor in the method
         ?: this.parent?.parent as? KtQualifiedExpression
-        // ?
-        ?: this as? KtNameReferenceExpression
         // x ? y (infix)
         ?: this.parent as? KtBinaryExpression
         // x()
@@ -276,8 +276,8 @@ private fun completableElement(file: CompiledFile, cursor: Int): Pair<KtElement,
     val parsed = file.parseAtPoint(cursor - 1) ?: return null
     val asGlobal = isGlobalCall(parsed)
     val el = (
-            if (asGlobal) asGlobalCompletable(file, cursor, parsed) else null
-     ) ?: parsed
+        if (asGlobal) asGlobalCompletable(file, cursor, parsed) else null
+        ) ?: parsed
 
     return el.asKtClass()?.let {
         Pair(it, asGlobal)
@@ -453,28 +453,28 @@ fun memberOverloads(type: KotlinType, identifier: String): Sequence<CallableDesc
     val nameFilter = equalsIdentifier(identifier)
 
     return type.memberScope
-            .getContributedDescriptors(Companion.CALLABLES).asSequence()
-            .filterIsInstance<CallableDescriptor>()
-            .filter(nameFilter)
+        .getContributedDescriptors(Companion.CALLABLES).asSequence()
+        .filterIsInstance<CallableDescriptor>()
+        .filter(nameFilter)
 }
 
 private fun completeTypeMembers(type: KotlinType): Sequence<DeclarationDescriptor> =
     type.memberScope.getDescriptorsFiltered(TYPES_FILTER).asSequence()
 
 private fun scopeChainTypes(scope: LexicalScope): Sequence<DeclarationDescriptor> =
-        scope.parentsWithSelf.flatMap(::scopeTypes)
+    scope.parentsWithSelf.flatMap(::scopeTypes)
 
 private val TYPES_FILTER = DescriptorKindFilter(DescriptorKindFilter.NON_SINGLETON_CLASSIFIERS_MASK or DescriptorKindFilter.TYPE_ALIASES_MASK)
 
 private fun scopeTypes(scope: HierarchicalScope): Sequence<DeclarationDescriptor> =
-        scope.getContributedDescriptors(TYPES_FILTER).asSequence()
+    scope.getContributedDescriptors(TYPES_FILTER).asSequence()
 
 fun identifierOverloads(scope: LexicalScope, identifier: String): Sequence<CallableDescriptor> {
     val nameFilter = equalsIdentifier(identifier)
 
     return identifiers(scope)
-            .filterIsInstance<CallableDescriptor>()
-            .filter(nameFilter)
+        .filterIsInstance<CallableDescriptor>()
+        .filter(nameFilter)
 }
 
 private fun extensionFunctions(scope: LexicalScope): Sequence<CallableDescriptor> =
@@ -482,13 +482,13 @@ private fun extensionFunctions(scope: LexicalScope): Sequence<CallableDescriptor
 
 private fun scopeExtensionFunctions(scope: HierarchicalScope): Sequence<CallableDescriptor> =
     scope.getContributedDescriptors(DescriptorKindFilter.CALLABLES).asSequence()
-            .filterIsInstance<CallableDescriptor>()
-            .filter { it.isExtension }
+        .filterIsInstance<CallableDescriptor>()
+        .filter { it.isExtension }
 
 private fun identifiers(scope: LexicalScope): Sequence<DeclarationDescriptor> =
     scope.parentsWithSelf
-            .flatMap(::scopeIdentifiers)
-            .flatMap(::explodeConstructors)
+        .flatMap(::scopeIdentifiers)
+        .flatMap(::explodeConstructors)
 
 private fun scopeIdentifiers(scope: HierarchicalScope): Sequence<DeclarationDescriptor> {
     val locals = scope.getContributedDescriptors().asSequence()
@@ -526,8 +526,8 @@ private fun name(d: DeclarationDescriptor): String {
 private fun isVisible(file: CompiledFile, cursor: Int): (DeclarationDescriptor) -> Boolean {
     val el = file.elementAtPoint(cursor) ?: return { true }
     val from = el.parentsWithSelf
-                       .mapNotNull { file.compile[BindingContext.DECLARATION_TO_DESCRIPTOR, it] }
-                       .firstOrNull() ?: return { true }
+        .mapNotNull { file.compile[BindingContext.DECLARATION_TO_DESCRIPTOR, it] }
+        .firstOrNull() ?: return { true }
     fun check(target: DeclarationDescriptor): Boolean {
         val visible = isDeclarationVisible(target, from)
 
@@ -543,8 +543,8 @@ private fun isVisible(file: CompiledFile, cursor: Int): (DeclarationDescriptor) 
 // Instead, we implement our own "liberal" visibility checker that defaults to visible when in doubt
 private fun isDeclarationVisible(target: DeclarationDescriptor, from: DeclarationDescriptor): Boolean =
     target.parentsWithSelf
-            .filterIsInstance<DeclarationDescriptorWithVisibility>()
-            .none { isNotVisible(it, from) }
+        .filterIsInstance<DeclarationDescriptorWithVisibility>()
+        .none { isNotVisible(it, from) }
 
 private fun isNotVisible(target: DeclarationDescriptorWithVisibility, from: DeclarationDescriptor): Boolean {
     when (target.visibility.delegate) {
